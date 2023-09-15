@@ -1,27 +1,43 @@
 const ErrorHandler = require("../utils/ErrorHandler");
 const { catchAsyncError } = require("../middlewares/catchAsyncError");
 const Blog = require("../models/Blog");
+const getDataUri = require("../utils/dataUri");
+const cloudinary = require("cloudinary");
 
 //exports createBlog function
 exports.createBlog = catchAsyncError(async (req, res, next) => {
+
+  const {title, author, content} = req.body;
+  const file = req.file;
+
+  if(!title || !author || !content){
+    return next(new ErrorHandler("Please fill all fields", 400));
+  }
+  
+  
   //creating a object consisting of title, author,content and image
   const blogData = {
-    title: req.body.title,
-    author: req.body.author,
-    content: req.body.content,
-    image: {
-      public_id: req.body.public_id,
-      url: req.body.url,
-    },
+    title : title,
+    author : author,
+    content : content,
   };
 
+  if(file){
+    const fileuri = getDataUri(file);
+    const myCloud = await cloudinary.v2.uploader.upload(fileuri.content);
+    blogData["image"] = {
+      public_id: myCloud.public_id,
+      url: myCloud.secure_url
+    }
+  }
+
+
   //creating a new blog
-  const newBlog = await Blog.create(blogData);
+  await Blog.create(blogData);
 
   res.status(200).json({
     success: true,
     message: "Blog created successfully",
-    newBlog,
   });
 });
 
@@ -90,5 +106,6 @@ exports.getAllBlogs = catchAsyncError(async (req, res, next) => {
     });
 
 });
+
 
 //implement indexing in database
