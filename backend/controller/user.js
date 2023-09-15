@@ -1,13 +1,21 @@
 const ErrorHandler = require("../utils/ErrorHandler");
 const { catchAsyncError } = require("../middlewares/catchAsyncError");
 const { sendEmail } = require("../middlewares/sendEmail");
+const {contactUs} = require("../middlewares/contact");
 const User = require("../models/User"); //requiring user model
 const crypto = require("crypto");
+const getDataUri = require("../utils/dataUri");
+const cloudinary = require("cloudinary");
 
 //exports registerUser function
 exports.registerUser = catchAsyncError(async (req, res, next) => {
   //extract name, email, password from request body
   const { name, email, password } = req.body;
+  const file = req.file;
+
+  if(!name || !email || !password){
+    return next(new ErrorHandler("Please fill all fields", 400));
+  }
 
   //check if user is already registered
   let user = await User.findOne({ email });
@@ -17,16 +25,24 @@ exports.registerUser = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("User already exists", 404));
   }
 
+  const newUser = {
+    name:name,
+    email:email,
+    password:password,
+  }
+
+  if(file){
+    const fileuri = getDataUri(file);
+    const myCloud = await cloudinary.v2.uploader.upload(fileuri.content);
+
+    newUser["avatar"] = {
+      public_id: myCloud.public_id,
+      url: myCloud.secure_url
+    }
+  }
+
   //if user is not registered then create
-  user = await User.create({
-    name,
-    email,
-    password,
-    avatar: {
-      public_id: "sample_id",
-      url: "sample_url",
-    },
-  });
+  user = await User.create(newUser);
 
   const count = await User.countDocuments();
   if (count === 1) {
@@ -190,4 +206,30 @@ exports.resetPassword =catchAsyncError( async (req, res, next) => {
 
 });
 
-//***upload documents***
+exports.contactToAdmin = catchAsyncError(async(req, res, next) => {
+    const {email, name, subject} = req.body;
+    if(!email || !name || !subject){
+      return next(new ErrorHandler("Please fill all the fields", 400));
+    }
+
+    const options = {
+      email:email,
+      name:name,
+      subject:subject
+    }
+
+    try {
+      await contactUs(options);
+
+      res.status(200).json({
+        success: true,
+        message: "Email Sent to Admin",
+      });
+      
+    } catch (error) {
+      return next(new ErrorHandler(error.message, 500));
+    }
+    
+});
+
+
