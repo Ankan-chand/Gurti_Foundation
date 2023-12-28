@@ -138,6 +138,7 @@ exports.promoteAdmin = catchAsyncError(async (req, res, next) => {
 });
 
 exports.forgotPassword = catchAsyncError(async (req, res, next) => {
+  
   let user = await User.findOne({ email: req.body.email });
   if (!user) {
     return next(new ErrorHandler("User not found", 404));
