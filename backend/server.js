@@ -3,12 +3,12 @@ const cloudinary = require("cloudinary");
 const Razorpay = require('razorpay');
 
 if(process.env.NODE_ENV !== "production"){
-  require("dotenv").config({path:"backend/config/config.env"});
+  require("dotenv").config({path:"backend/config.env"});
 }
 
 
 //connecting database
-const {connectDatabase} = require("./config/database");
+const {connectDatabase} = require("./db/database");
 connectDatabase();
 
 
